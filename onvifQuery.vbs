@@ -25,34 +25,37 @@ ns5 = "xmlns:tr2=""http://www.onvif.org/ver20/media/wsdl"""
 xmlDoc.setProperty "SelectionNamespaces", ns &" " &ns2 &" " &ns3 &" " &ns4 &" " &ns5
 
 GetProfile=_
-" <s:Body" + _
-"	xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' " +_  
-"	xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +_  
-"   <GetProfiles xmlns='http://www.onvif.org/ver10/media/wsdl' />" +_
-" </s:Body>" 
+"<s:Body " + _
+"xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' " +_  
+"xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +_  
+"<GetProfiles xmlns='http://www.onvif.org/ver10/media/wsdl'/>" +_
+"</s:Body>" 
 
 GetServices=_
-" <s:Body " + _
-"	xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' " +_  
-"	xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +_  
-"   <GetServices xmlns='http://www.onvif.org/ver10/device/wsdl'>" +_
-"	<IncludeCapability>false</IncludeCapability>" +_
-"   </GetServices>" +_
-" </s:Body>" 
+"<s:Body " + _
+"xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' " +_  
+"xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +_  
+"<GetServices xmlns='http://www.onvif.org/ver10/device/wsdl'>" +_
+"<IncludeCapability>false</IncludeCapability>" +_
+"</GetServices>" +_
+"</s:Body>" 
 
 
 GetStreamUri=_
-" <s:Body " + _
-"	xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' " +_  
-"	xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +_  
-"   <GetStreamUri xmlns='http://www.onvif.org/ver20/media/wsdl'><Protocol>RtspOverHttp</Protocol><ProfileToken>REPLACEPROFILE</ProfileToken></GetStreamUri>" +_
-" </s:Body>" 
+"<s:Body " + _
+"xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' " +_  
+"xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +_  
+"<GetStreamUri xmlns='http://www.onvif.org/ver20/media/wsdl'><Protocol>RtspOverHttp</Protocol><ProfileToken>REPLACEPROFILE</ProfileToken></GetStreamUri>" +_
+"</s:Body>" 
 
 
 
 xmlstd = _
 "xmlns:s='http://www.w3.org/2003/05/soap-envelope' " + _
-"xmlns:a='http://www.w3.org/2005/08/addressing' " +_ 
+"xmlns:a='http://www.w3.org/2005/08/addressing'" 
+
+
+xxxx= _
 "xmlns:SOAP-ENC='http://www.w3.org/2003/05/soap-encoding' " +_  
 "xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' " +_  
 "xmlns:xsd='http://www.w3.org/2001/XMLSchema' " +_  
@@ -113,35 +116,64 @@ with CreateObject("MSXML2.ServerXMLHTTP.6.0")
 
 	.setRequestHeader "Accept-Encoding", "gzip, deflate"
 	.setRequestHeader "Connection", "keep-alive"
+
+	lResolve = 30 * 1000  
+	lConnect = 60 * 1000  
+	lSend = 30 * 1000 
+	lReceive = 120 * 1000
+	.setTimeouts lResolve, lConnect, lSend, lReceive
+	
+	On Error Resume Next
 	.send Replace(requestGetProfile, "'", chr(34))
 
-   	xmlDoc.loadXML(.responseText)
-	Set items = xmlDoc.selectNodes("//trt:Profiles")
 
-	WScript.Echo "Found " & items.length & " Profile(s)."
-  	
-	x = 0
-	y = 0 
-  	For Each item In items
-		profile(x) = item.getAttribute("token")
-    		WScript.Echo " Profile " &x &" token: " &item.getAttribute("token") &" Name: " &item.selectNodes("tt:Name")(0).text
-
-		.open "POST", url, False , user, password
-		.setRequestHeader "Content-Type", "application/soap+xml; charset=utf-8" 
-		.setRequestHeader "Accept-Encoding", "gzip, deflate"
-		.setRequestHeader "Connection", "keep-alive"
-		requestGetStreamUri = Replace(requestGetStreamUri, "'", chr(34))
-		.send Replace(requestGetStreamUri, "REPLACEPROFILE", profile(x))
+	If Err.Number = 0 Then 
 
 	   	xmlDoc.loadXML(.responseText)
-		Set itemStreams = xmlDoc.selectNodes("//tr2:Uri")
-	  	For Each itemStream In itemStreams
-			streamUri(y) = itemStream.text
-    			WScript.Echo "   Found stream: " &itemStream.text 
-			y =y + 1
-	  	Next
-		x = x +1
-  	Next
+		Set items = xmlDoc.selectNodes("//trt:Profiles")
+
+		WScript.Echo "Found " & items.length & " Profile(s)."
+  	
+		x = 0
+		y = 0 
+  		For Each item In items
+			profile(x) = item.getAttribute("token")
+	    		WScript.Echo " Profile " &x &" token: " &item.getAttribute("token") &" Name: " &item.selectNodes("tt:Name")(0).text
+
+			.open "POST", url, False , user, password
+			.setRequestHeader "Content-Type", "application/soap+xml; charset=utf-8" 
+			.setRequestHeader "Accept-Encoding", "gzip, deflate"
+			.setRequestHeader "Connection", "keep-alive"
+			requestGetStreamUri = Replace(requestGetStreamUri, "'", chr(34))
+			.send Replace(requestGetStreamUri, "REPLACEPROFILE", profile(x))
+
+'			wscript.echo
+'			wscript.echo Replace(requestGetStreamUri, "REPLACEPROFILE", profile(x))
+'			wscript.echo
+'			wscript.echo
+
+		   	xmlDoc.loadXML(.responseText)
+			Set itemStreams = xmlDoc.selectNodes("//tr2:Uri")
+	  		For Each itemStream In itemStreams
+				streamUri(y) = itemStream.text
+	    			WScript.Echo "   Found stream: " &itemStream.text 
+				y =y + 1
+	  		Next
+			if streamUri(y) <> "" then exit for 
+			x = x +1
+  		Next
+
+	elseif  Err.Number = -2147012889 then
+
+		wscript.echo "Invalid IP Address or Hostname. Error code: " +hex(Err.Number)
+
+	else
+
+		wscript.echo "Error code: " +hex(Err.Number)
+
+	end if
+
+	On Error GoTo 0
 
 end with
 
